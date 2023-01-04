@@ -67,8 +67,7 @@ void* readLines(void* lineInfo)
         if (fgets(line, MAX_LINE, fileToRead) == NULL) {
             break;
         }
-        printf("PRZECZYTAL")
-            printf("OUT/ERR probuje ja zapisac\n");
+        printf("OUT/ERR probuje ja zapisac\n");
         pthread_mutex_lock(&info->mutex);
         strcpy(info->buf, line);
         pthread_mutex_unlock(&info->mutex);
