@@ -77,12 +77,6 @@ void* readLines(void* lineInfo)
         if (debug)
             printf("OUT/ERR probuje ja zapisac\n");
         pthread_mutex_lock(info->mutex);
-        // int i = 0;
-        // for (int i = 0; line[i] != '\0'; i++) {
-        //     info->buf[i] = line[i];
-        // }
-        // info->buf[i] = '\0';
-        // sprintf(info->buf, "%s", line);
         strcpy(info->buf, line);
         pthread_mutex_unlock(info->mutex);
     }
@@ -124,29 +118,15 @@ void* runTask(void* taskPtr)
     pid_t pid = fork();
     ASSERT_SYS_OK(pid);
     if (!pid) {
-        if (debug)
-            printf("Bachor stworzony\n");
         ASSERT_SYS_OK(close(fdOut[0]));
         ASSERT_SYS_OK(close(fdErr[0]));
-        if (debug)
-            printf("Bachor odjebal pipe\n");
         ASSERT_SYS_OK(dup2(fdOut[1], STDOUT_FILENO));
         ASSERT_SYS_OK(dup2(fdErr[1], STDERR_FILENO));
         ASSERT_SYS_OK(close(fdOut[1]));
         ASSERT_SYS_OK(close(fdErr[1]));
-        // printf("Program: %s\n", task->argv[1]);
-        // if (strcmp(task->argv[1], "./01_out")) {
-        //     for (int i = 0; task->argv[1][i] != '\0'; i++) {
-        //         printf("%d ", task->argv[1][i]);
-        //     }
-        //     printf("BAJO JAJO\n");
-        // }
         execvp(task->argv[1], task->argv + 1);
-        // execvp("./01_out", task->argv + 1);
     } else {
         printf("Task %d started: pid %d.\n", task->id, pid);
-        if (debug)
-            printf("Stary rozpoczyna\n");
         close(fdOut[1]);
         close(fdErr[1]);
         task->pid = pid;
@@ -164,17 +144,11 @@ void* runTask(void* taskPtr)
         errInfo.mutex = &task->errSem;
         int pidStatus;
         pthread_attr_t attr;
-        if (debug)
-            printf("Stary tworzy watki\n");
         ASSERT_ZERO(pthread_attr_init(&attr));
         ASSERT_ZERO(pthread_create(&out, &attr, readLines, &outInfo));
         ASSERT_ZERO(pthread_create(&err, &attr, readLines, &errInfo));
-        if (debug)
-            printf("Stary stworzyl watki\n");
         ASSERT_SYS_OK(sem_post(&handledTask));
         ASSERT_SYS_OK(waitpid(pid, &pidStatus, 0));
-        if (debug)
-            printf("STARY CO TY ODPIERDALASZ\n");
         ASSERT_ZERO(pthread_join(out, &outExitStatus));
         ASSERT_ZERO(pthread_join(err, &errExitStatus));
         ASSERT_ZERO(pthread_attr_destroy(&attr));
@@ -202,26 +176,14 @@ int main()
         if (!strcmp(line, "\r\n") || !strcmp(line, "\n"))
             continue;
         strtok(line, "\r\n");
-        if (debug)
-            printf("MAM WYJEBANE\n");
-        if (debug)
-            printf("chuj%d\n", 0);
         splitLine = split_string(line);
         if (!strcmp(splitLine[0], "run")) {
             tasks[tasksCount].id = tasksCount;
-            if (debug)
-                printf("chuj2\n");
             ASSERT_ZERO(pthread_mutex_init(&(tasks[tasksCount].outSem), NULL));
             ASSERT_ZERO(pthread_mutex_init(&(tasks[tasksCount].errSem), NULL));
-            if (debug)
-                printf("chuj2.5\n");
             tasks[tasksCount].argv = splitLine;
-            if (debug)
-                printf("chuj3\n");
             ASSERT_ZERO(pthread_create(&(tasks[tasksCount].thread), &attr,
                 runTask, &tasks[tasksCount]));
-            if (debug)
-                printf("chuj4\n");
             tasksCount++;
             ASSERT_SYS_OK(sem_wait(&handledTask));
         } else {
@@ -246,21 +208,10 @@ int main()
                 break;
             }
             free_split_string(splitLine);
-            // else if (!strcmp(splitLine[0], "sleep")) {
-            //     int seconds = atoi(splitLine[1]);
-            //     ASSERT_SYS_OK(sleep(seconds));
-            // }
-            // else if (!strcmp(splitLine[0], "quit")) {
-            // quit
-            // }
         }
-        // if (strcmp(splitLine[0], "run")) {
-        //     free(line);
-        // }
         ASSERT_ZERO(pthread_mutex_lock(&busyQueue));
         busy = false;
         if (idxFinished > 0) {
-            // printf("PRINTING QUEUE\n");
             printf("%s", finished);
             idxFinished = 0;
             finished[0] = '\0';
@@ -270,14 +221,13 @@ int main()
     ASSERT_ZERO(pthread_mutex_lock(&busyQueue));
     busy = false;
     if (idxFinished > 0) {
-        // printf("PRINTING QUEUE\n");
         printf("%s", finished);
         idxFinished = 0;
         finished[0] = '\0';
     }
     ASSERT_ZERO(pthread_mutex_unlock(&busyQueue));
     for (int i = 0; i < tasksCount; i++) {
-        kill(tasks[i].pid, SIGINT);
+        kill(tasks[i].pid, SIGKILL);
         pthread_join(tasks[i].thread, NULL);
         pthread_mutex_destroy(&tasks[i].errSem);
         pthread_mutex_destroy(&tasks[i].outSem);
