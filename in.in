@@ -1,1 +1,13 @@
-run ./number
+run ./chuj
+
+
+
+
+
+out 0
+
+err 0
+    
+
+
+run ./chuj
