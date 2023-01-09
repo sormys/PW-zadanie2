@@ -82,7 +82,7 @@ void finishInfo(int taskNo, int exitStatus)
     } else {
         sprintf(info, "Task %d ended: signalled.\n", taskNo);
     }
-    ASSERT_ZERO(pthread_mutex_lock(&busyQueue));
+    pthread_mutex_lock(&busyQueue);
     if (busy) {
         char* q = finished + idxFinished;
         strcpy(q, info);
@@ -90,7 +90,7 @@ void finishInfo(int taskNo, int exitStatus)
     } else {
         printf("%s", info);
     }
-    ASSERT_ZERO(pthread_mutex_unlock(&busyQueue));
+    pthread_mutex_unlock(&busyQueue);
 }
 
 void* runTask(void* taskPtr)
@@ -131,14 +131,14 @@ void* runTask(void* taskPtr)
         errInfo.mutex = &task->errSem;
         int pidStatus;
         pthread_attr_t attr;
-        ASSERT_ZERO(pthread_attr_init(&attr));
-        ASSERT_ZERO(pthread_create(&out, &attr, readLines, &outInfo));
-        ASSERT_ZERO(pthread_create(&err, &attr, readLines, &errInfo));
+        pthread_attr_init(&attr);
+        pthread_create(&out, &attr, readLines, &outInfo);
+        pthread_create(&err, &attr, readLines, &errInfo);
         ASSERT_SYS_OK(sem_post(&handledTask));
         ASSERT_SYS_OK(waitpid(pid, &pidStatus, 0));
-        ASSERT_ZERO(pthread_join(out, &outExitStatus));
-        ASSERT_ZERO(pthread_join(err, &errExitStatus));
-        ASSERT_ZERO(pthread_attr_destroy(&attr));
+        pthread_join(out, &outExitStatus);
+        pthread_join(err, &errExitStatus);
+        pthread_attr_destroy(&attr);
         finishInfo(task->id, pidStatus);
     }
     return NULL;
@@ -146,14 +146,14 @@ void* runTask(void* taskPtr)
 
 void finishHandling(void)
 {
-    ASSERT_ZERO(pthread_mutex_lock(&busyQueue));
+    pthread_mutex_lock(&busyQueue);
     busy = false;
     if (idxFinished > 0) {
         printf("%s", finished);
         idxFinished = 0;
         finished[0] = '\0';
     }
-    ASSERT_ZERO(pthread_mutex_unlock(&busyQueue));
+    pthread_mutex_unlock(&busyQueue);
 }
 
 int main()
@@ -162,24 +162,24 @@ int main()
     char* splitLine[MAX_TASK_LENGTH];
     int tasksCount = 0;
     pthread_attr_t attr;
-    ASSERT_ZERO(pthread_attr_init(&attr));
-    ASSERT_ZERO(pthread_mutex_init(&busyQueue, NULL));
+    pthread_attr_init(&attr);
+    pthread_mutex_init(&busyQueue, NULL);
     ASSERT_SYS_OK(sem_init(&handledTask, 0, 0));
     while (fgets(line, MAX_LINE, stdin)) {
-        ASSERT_ZERO(pthread_mutex_lock(&busyQueue));
+        pthread_mutex_lock(&busyQueue);
         busy = true;
-        ASSERT_ZERO(pthread_mutex_unlock(&busyQueue));
+        pthread_mutex_unlock(&busyQueue);
         strtok(line, "\r\n");
         acually_working_split_string(splitLine, line);
         if (!splitLine[0]) // empty line
             continue;
         if (!strcmp(splitLine[0], "run")) {
             tasks[tasksCount].id = tasksCount;
-            ASSERT_ZERO(pthread_mutex_init(&(tasks[tasksCount].outSem), NULL));
-            ASSERT_ZERO(pthread_mutex_init(&(tasks[tasksCount].errSem), NULL));
+            pthread_mutex_init(&(tasks[tasksCount].outSem), NULL);
+            pthread_mutex_init(&(tasks[tasksCount].errSem), NULL);
             tasks[tasksCount].argv = splitLine;
-            ASSERT_ZERO(pthread_create(&(tasks[tasksCount].thread), &attr,
-                runTask, &tasks[tasksCount]));
+            pthread_create(&(tasks[tasksCount].thread), &attr,
+                runTask, &tasks[tasksCount]);
             tasksCount++;
             ASSERT_SYS_OK(sem_wait(&handledTask));
         } else if (!strcmp(splitLine[0], "out")) {
@@ -210,8 +210,8 @@ int main()
         pthread_mutex_destroy(&tasks[i].errSem);
         pthread_mutex_destroy(&tasks[i].outSem);
     }
-    ASSERT_ZERO(pthread_mutex_destroy(&busyQueue));
-    ASSERT_ZERO(pthread_attr_destroy(&attr));
+    pthread_mutex_destroy(&busyQueue);
+    pthread_attr_destroy(&attr);
     ASSERT_SYS_OK(sem_destroy(&handledTask));
 
     return 0;
