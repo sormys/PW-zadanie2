@@ -60,7 +60,7 @@ void* readLines(void* lineInfo)
         printf("ERROR!!!! COULD NOT OPEN A FILE\n");
         return NULL;
     }
-    setbuf(fileToRead, 0);
+
     while (true) {
         if (fgets(line, MAX_LINE, fileToRead) == NULL)
             break;
@@ -100,6 +100,8 @@ void* runTask(void* taskPtr)
     ASSERT_SYS_OK(pipe(fdOut));
     int fdErr[2];
     ASSERT_SYS_OK(pipe(fdErr));
+    set_close_on_exec(fdOut[0], true);
+    set_close_on_exec(fdErr[0], true);
     pid_t pid = fork();
     ASSERT_SYS_OK(pid);
     if (!pid) {
